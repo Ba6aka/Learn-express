@@ -3,25 +3,31 @@ const express = require('express')
 
 const port = 3000
 const app = express()
+let tours = JSON.parse(fs.readFileSync(`dev-data/data/tours-simple.json`))
 
-let tours = JSON.parse(fs.readFileSync('./dev-data/data/tours-simple.json'))
-
-app.use(express.json())
 
 app.listen(port, () => {
   console.log(`server started on ${port} port`)
 })
 
-const getAllTours = (req, res) => {
+app.use(express.json())
+app.use(getTime)
+
+app.route('/api/v1/tours').get(getAllTours).post(addTour)
+app.route('/api/v1/tours/:id').get(getTour).patch(updateTour).delete(deleteTour)
+
+
+function getAllTours(req, res) {
   res.
     status(200)
     .json({
       success: 'success',
+      time: req.requestTime,
       data: { tours }
     })
 }
 
-const getTour = (req, res) => {
+function getTour(req, res) {
   const tour = tours.find(el => el.id === +req.params.id)
 
   if (!tour) {
@@ -37,7 +43,7 @@ const getTour = (req, res) => {
   })
 }
 
-const addTour = (req, res) => {
+function addTour(req, res) {
   console.log(req.body)
 
   const id = tours[tours.length - 1].id + 1
@@ -51,7 +57,7 @@ const addTour = (req, res) => {
   })
 }
 
-const updateTour = (req, res) => {
+function updateTour(req, res) {
   if (+req.params.id > tours.length) {
     res.status(404).json({
       status: 'fail',
@@ -73,7 +79,7 @@ const updateTour = (req, res) => {
   })
 }
 
-const deleteTour = (req, res) => {
+function deleteTour(req, res) {
   if (+req.params.id > tours.length) {
     res.status(404).json({
       status: 'fail',
@@ -92,8 +98,12 @@ const deleteTour = (req, res) => {
   })
 }
 
-app.route().get(getAllTours).post(addTour)
-app.route().get(getTour).patch(updateTour).delete(deleteTour)
+function getTime(req, res, next) {
+  req.requestTime = new Date().toISOString()
+  next()
+}
+
+
 
 
 // app.get('/api/v1/tours', getAllTours)
