@@ -3,7 +3,13 @@ const express = require('express')
 
 const port = 3000
 const app = express()
-let tours = JSON.parse(fs.readFileSync(`dev-data/data/tours-simple.json`))
+
+// let tours = JSON.parse(fs.readFileSync(`dev-data/data/tours-simple.json`))
+
+const data = {
+  tours: JSON.parse(fs.readFileSync(`dev-data/data/tours.json`)),
+  users: JSON.parse(fs.readFileSync(`dev-data/data/users.json`))
+}
 
 
 app.listen(port, () => {
@@ -13,24 +19,45 @@ app.listen(port, () => {
 app.use(express.json())
 app.use(getTime)
 
-app.route('/api/v1/tours').get(getAllTours).post(addTour)
-app.route('/api/v1/tours/:id').get(getTour).patch(updateTour).delete(deleteTour)
+app.route('/api/v1/tours').get(getAll).post(addOne)
+app.route('/api/v1/users').get(getAll).post(addOne)
+app.route('/api/v1/tours/:id').get(getOne).patch(updateOne).delete(deleteTour)
+app.route('/api/v1/users/:id').get(getOne).patch(updateOne).delete(deleteTour)
 
 
-function getAllTours(req, res) {
+function getAll(req, res) {
+  const url = req.url.split('/')[3]
+  const UT = data[url]
+
   res.
     status(200)
     .json({
       success: 'success',
       time: req.requestTime,
-      data: { tours }
+      UT
     })
 }
 
-function getTour(req, res) {
-  const tour = tours.find(el => el.id === +req.params.id)
+function addOne(req, res) {
+  const url = req.url.split('/')[3]
+  const UT = data[url]
+  const id = UT[UT.length - 1].id + 1
+  const newData = Object.assign({ id }, req.body)
 
-  if (!tour) {
+  fs.writeFile(`./dev-data/data/${url}.json`, JSON.stringify([...tours, newTour]), err => {
+    res.status(201).json({
+      success: 'success',
+      data: { newData }
+    })
+  })
+}
+
+function getOne(req, res) {
+  const url = req.url.split('/')[3]
+  const UT = data[url]
+  const newData = UT.find(el => el._id == req.params.id)
+
+  if (!newData) {
     res.status(404).json({
       status: 'fail',
       message: 'Invalid ID'
@@ -39,26 +66,15 @@ function getTour(req, res) {
 
   res.json({
     status: 'success',
-    tour
+    newData
   })
 }
 
-function addTour(req, res) {
-  console.log(req.body)
+function updateOne(req, res) {
+  const url = req.url.split('/')[3]
+  const UT = data[url]
 
-  const id = tours[tours.length - 1].id + 1
-  const newTour = Object.assign({ id }, req.body)
-
-  fs.writeFile('./dev-data/data/tours-simple.json', JSON.stringify([...tours, newTour]), err => {
-    res.status(201).json({
-      success: 'success',
-      data: { newTour }
-    })
-  })
-}
-
-function updateTour(req, res) {
-  if (+req.params.id > tours.length) {
+  if (+req.params._id > UT.length) {
     res.status(404).json({
       status: 'fail',
       message: 'Invalid ID'
@@ -66,31 +82,34 @@ function updateTour(req, res) {
   }
 
   for (const [param, value] of Object.entries(req.body)) {
-    tours[+req.params.id][param] = value
+    UT[+req.params.id][param] = value
   }
 
-  const newTour = tours[+req.params.id]
+  const newData = UT[+req.params.id]
 
-  fs.writeFile('./dev-data/data/tours-simple.json', JSON.stringify(tours), err => {
+  fs.writeFile(`./dev-data/data/${url}.json`, JSON.stringify(UT), err => {
     res.status(200).json({
       status: 'success',
-      newTour
+      newData
     })
   })
 }
 
 function deleteTour(req, res) {
-  if (+req.params.id > tours.length) {
+  const url = req.url.split('/')[3]
+  const UT = data[url]
+
+  if (+req.params.id > UT.length) {
     res.status(404).json({
       status: 'fail',
       message: 'Invalid ID'
     })
   }
 
-  const deletedTour = tours[req.params.id];
-  tours.splice(req.params.id, 1)
+  const deletedTour = UT[req.params.id];
+  UT.splice(req.params.id, 1)
 
-  fs.writeFile('./dev-data/data/tours-simple.json', JSON.stringify(tours), err => {
+  fs.writeFile(`./dev-data/data/${url}.json`, JSON.stringify(UT), err => {
     res.json({
       status: 'success',
       deletedTour
@@ -102,9 +121,6 @@ function getTime(req, res, next) {
   req.requestTime = new Date().toISOString()
   next()
 }
-
-
-
 
 // app.get('/api/v1/tours', getAllTours)
 // app.get('/api/v1/tours/:id', getTour)
